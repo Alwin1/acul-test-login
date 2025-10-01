@@ -1,10 +1,9 @@
-// login-with-password.js — Advanced mode for "login / login" (single screen)
-// Requirements:
-// - Identifier-First OFF (Authentication → Authentication Profile)
-// - Screen: Universal Login → Customize authentication screens → login / login
-// - Rendering mode: Advanced
-// - Include Default Head Tags: OFF
-// - Head Tags: link to styles.css and this script
+// login-identifier-password.js — ACUL "Login" screen (Identifier + Password profile)
+// Screen: Branding → Universal Login → login / login
+// Rendering mode: Advanced; Include Default Head Tags: OFF
+// Head Tags must load styles.css + this script
+
+import Login from "https://esm.sh/@auth0/auth0-acul-js/login";
 
 const html = String.raw;
 
@@ -35,19 +34,17 @@ function render() {
       <aside class="panel">
         <h2>User Login</h2>
 
-        <!-- ACUL requires a regular URL-encoded POST to the SAME URL -->
-        <form id="login-form" method="post" accept-charset="utf-8" autocomplete="on">
-          <div style="margin: 8px 0 14px;">
-            <label for="username" style="display:block;margin-bottom:6px;font-weight:600">Email or Username</label>
-            <!-- If your tenant expects 'identifier', change name="username" to name="identifier" -->
-            <input id="username" name="username" type="text" required autocomplete="username"
+        <form id="login-form" novalidate autocomplete="on">
+          <div style="margin:8px 0 14px;">
+            <label for="identifier" style="display:block;margin-bottom:6px;font-weight:600">Email or Username</label>
+            <input id="identifier" type="text" required autocomplete="username"
                    style="width:100%;padding:10px 12px;border:1px solid #d5dee8;border-radius:6px">
           </div>
 
-          <div style="margin: 8px 0 16px;">
+          <div style="margin:8px 0 16px;">
             <label for="password" style="display:block;margin-bottom:6px;font-weight:600">Password</label>
             <div style="position:relative">
-              <input id="password" name="password" type="password" required autocomplete="current-password"
+              <input id="password" type="password" required autocomplete="current-password"
                      style="width:100%;padding:10px 40px 10px 12px;border:1px solid #d5dee8;border-radius:6px">
               <button type="button" id="togglePw"
                       aria-label="Show password"
@@ -57,10 +54,18 @@ function render() {
             </div>
           </div>
 
-          <button type="submit"
+          <label style="display:flex;gap:8px;align-items:center;margin:0 0 16px;">
+            <input type="checkbox" id="remember"> Remember this device
+          </label>
+
+          <button id="submitBtn" type="submit"
                   style="padding:10px 14px;border-radius:6px;border:1px solid #0a69b5;background:#0a69b5;color:#fff;font-weight:600;cursor:pointer">
             Log in
           </button>
+
+          <div style="margin-top:10px">
+            <a href="?screen_hint=reset-password">Forgot password?</a>
+          </div>
         </form>
 
         <div id="error" class="note" style="display:none;margin-top:12px;color:#b42318"></div>
@@ -79,33 +84,80 @@ function render() {
   document.body.prepend(...Array.from(node.childNodes));
 }
 
-function wireUp() {
-  const u = document.getElementById('username');
-  const p = document.getElementById('password');
-  const toggle = document.getElementById('togglePw');
-  const form = document.getElementById('login-form');
-  const err = document.getElementById('error');
+function renderError(screen, el) {
+  const errs = (screen?.getError && screen.getError()) || [];
+  if (!errs.length) { el.style.display = 'none'; el.textContent = ''; return; }
+  const first = errs[0];
+  el.textContent = first?.description || first?.message || 'Unable to sign in. Please try again.';
+  el.style.display = 'block';
+}
 
-  // Autofocus username, then password if username already present (back nav)
-  (u?.value ? p : u)?.focus();
+async function start() {
+  render();
+
+  const login = new Login(); // ACUL Login screen class (Identifier + Password)
+  const form = document.getElementById('login-form');
+  const idEl = document.getElementById('identifier');
+  const pwEl = document.getElementById('password');
+  const rememberEl = document.getElementById('remember');
+  const toggle = document.getElementById('togglePw');
+  const submitBtn = document.getElementById('submitBtn');
+  const errorEl = document.getElementById('error');
+
+  // Focus identifier initially; if filled (e.g. browser autofill), focus password
+  (idEl?.value ? pwEl : idEl)?.focus();
 
   // Show/hide password
-  toggle?.addEventListener('click', () => {
-    const showing = p.type === 'text';
-    p.type = showing ? 'password' : 'text';
+  toggle.addEventListener('click', () => {
+    const showing = pwEl.type === 'text';
+    pwEl.type = showing ? 'password' : 'text';
     toggle.textContent = showing ? 'Show' : 'Hide';
     toggle.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
-    p.focus();
+    pwEl.focus();
   });
 
-  // Let browser submit as application/x-www-form-urlencoded to the same URL
-  form?.addEventListener('submit', () => {
-    err.style.display = 'none';
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errorEl.style.display = 'none';
+
+    const identifier = (idEl.value || '').trim();
+    const password = (pwEl.value || '').trim();
+    if (!identifier) { idEl.focus(); return; }
+    if (!password) { pwEl.focus(); return; }
+
+    submitBtn.disabled = true;
+
+    try {
+      // Different SDK revisions expose .login({ ... }) or .continue({ ... })
+      const payload = {
+        // Provide multiple keys; SDK will use the right one (username/email/loginId/identifier)
+        username: identifier, email: identifier, loginId: identifier, identifier,
+        password,
+        rememberDevice: !!rememberEl.checked
+      };
+
+      if (typeof login.login === 'function') {
+        await login.login(payload);
+      } else if (typeof login.continue === 'function') {
+        await login.continue(payload);
+      } else if (typeof login.authenticate === 'function') {
+        await login.authenticate(payload);
+      } else {
+        throw new Error('Unsupported SDK method on Login screen class');
+      }
+      // On success, Auth0 advances or redirects automatically.
+    } catch (err) {
+      console.warn('Login error', err);
+      renderError(login, errorEl);
+      submitBtn.disabled = false;
+      pwEl.focus();
+    }
   });
+
+  // If we arrived with a transaction error, show it
+  renderError(login, errorEl);
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => { render(); wireUp(); });
-} else {
-  render(); wireUp();
-}
+(document.readyState === 'loading')
+  ? document.addEventListener('DOMContentLoaded', start)
+  : start();
