@@ -1,0 +1,19 @@
+:root{--brand-bg:#0a2945;--panel:#fff;--ink:#1b1b1b;--muted:#5d6b7a;--bg:#f6f8fb}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+.topbar{height:72px;background:var(--brand-bg);display:flex;align-items:center;padding:0 24px;color:#fff}
+.brand{font-weight:600;letter-spacing:.02em;opacity:.95}
+.wrap{display:grid;grid-template-columns:1.2fr .8fr;gap:56px;max-width:1160px;margin:40px auto;padding:0 24px}
+.left h1{font-size:44px;line-height:1.15;margin:0 0 8px}
+.left h1 .sub{display:block;font-weight:600}
+.left p.lead{color:var(--muted);font-size:16px;margin:12px 0 28px}
+.bullets{display:grid;gap:18px;font-size:15px}
+.bullets b{font-weight:600}
+.remit{margin-top:28px;padding-top:16px;border-top:1px solid #e7edf3;font-size:14px;color:var(--muted)}
+.panel{background:var(--panel);border-radius:8px;box-shadow:0 8px 24px rgba(16,24,40,.08);padding:24px}
+.panel h2{font-size:14px;font-weight:700;letter-spacing:.06em;color:var(--muted);margin:0 0 12px;text-transform:uppercase}
+.note{margin-top:10px;font-size:12px;color:var(--muted)}
+.signup{margin-top:20px;padding-top:16px;border-top:1px solid #eef2f6;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.signup .btn{border:1px solid #d5dee8;background:#f9fbfe;padding:8px 14px;border-radius:6px;text-decoration:none;color:#0b3157;font-weight:600}
+form{margin:0}input,button{font:inherit}
+@media (max-width:960px){.wrap{grid-template-columns:1fr;gap:24px}}
