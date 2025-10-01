@@ -16,4 +16,7 @@ html,body{margin:0;height:100%;font-family:Inter,system-ui,Segoe UI,Roboto,Arial
 .signup{margin-top:20px;padding-top:16px;border-top:1px solid #eef2f6;display:flex;justify-content:space-between;align-items:center;gap:12px}
 .signup .btn{border:1px solid #d5dee8;background:#f9fbfe;padding:8px 14px;border-radius:6px;text-decoration:none;color:#0b3157;font-weight:600}
 form{margin:0}input,button{font:inherit}
+/* Ensure injected MFA UI fits nicely in the right panel */
+#auth0-mfa-mount > * { width:100%; }
+#auth0-mfa-mount form { margin: 0; }
 @media (max-width:960px){.wrap{grid-template-columns:1fr;gap:24px}}
