@@ -1,5 +1,5 @@
 // mfa-wrapper.js — robust wrapper for all MFA screens (Advanced mode)
-// Keep "Include Default Head Tags" ON for each MFA screen.
+// Keep "Include Default Head Tags" ON for these screens.
 // Head Tags should load styles.css + this file.
 
 (function () {
@@ -41,31 +41,38 @@
     document.body.prepend(root);
   }
 
-  // Find whatever Auth0 injected (form or its top container) and move it
+  function pickLargest(elements) {
+    let best = null, area = 0;
+    elements.forEach(el => {
+      const r = el.getBoundingClientRect();
+      const a = Math.max(0, r.width * r.height);
+      if (a > area) { area = a; best = el; }
+    });
+    return best;
+  }
+
   function moveDefaultUI() {
     const mount = document.getElementById('auth0-mfa-mount');
     if (!mount) return false;
 
-    // 1) Prefer top-level children that are NOT our shell
-    const topLevel = Array.from(document.body.children)
-      .filter(el => !el.hasAttribute('data-shell-root') && el.tagName !== 'SCRIPT' && el.tagName !== 'LINK');
+    // 1) Any top-level element (div/iframe) that isn't our shell/assets
+    const topLevel = Array.from(document.body.children).filter(el =>
+      !el.hasAttribute('data-shell-root') &&
+      el.tagName !== 'SCRIPT' &&
+      el.tagName !== 'LINK' &&
+      el.tagName !== 'STYLE'
+    );
 
     if (topLevel.length) {
-      // pick the largest element by rendered area (usually the MFA root)
-      let best = null, bestArea = 0;
-      for (const el of topLevel) {
-        const r = el.getBoundingClientRect();
-        const area = Math.max(0, r.width * r.height);
-        if (area > bestArea) { bestArea = area; best = el; }
-      }
-      if (best) {
+      const best = pickLargest(topLevel);
+      if (best && !mount.contains(best)) {
         mount.appendChild(best);
         best.style.width = '100%';
         return true;
       }
     }
 
-    // 2) Fallback: look for a POST form and grab a stable ancestor
+    // 2) Fallback: form-based UI
     const form = document.querySelector('form[method="post"]') || document.querySelector('form');
     if (form) {
       const root =
@@ -75,25 +82,28 @@
       return true;
     }
 
+    // 3) Log to help diagnose
+    console.log('[MFA wrapper] No default MFA UI found yet. Screen info:', 
+      window.universal_login_context && window.universal_login_context.screen);
+
     return false;
   }
 
   function start() {
+    // Helpful: see exactly which screen we're on
+    console.log('[MFA wrapper] Context:', window.universal_login_context);
+
     buildShell();
 
-    // Try immediately; if it isn't ready yet, watch for it
     if (moveDefaultUI()) return;
 
     const obs = new MutationObserver(() => { if (moveDefaultUI()) obs.disconnect(); });
     obs.observe(document.documentElement, { childList: true, subtree: true });
 
-    // stop watching after 10s
     setTimeout(() => obs.disconnect(), 10000);
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', start);
-  } else {
-    start();
-  }
+  (document.readyState === 'loading')
+    ? document.addEventListener('DOMContentLoaded', start)
+    : start();
 })();
