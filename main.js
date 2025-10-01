@@ -1,10 +1,9 @@
-// main.js — wrap, don't move
+// main.js — Minimal ACUL Login-ID screen (no default head tags)
 const html = String.raw;
 
-function buildScaffold() {
-  // Top bar + 2-col scaffold
-  const scaffold = document.createElement('div');
-  scaffold.innerHTML = html`
+function shell() {
+  const node = document.createElement('div');
+  node.innerHTML = html`
     <div class="topbar"><div class="brand">ESQUIRE | CONNECT</div></div>
     <main class="wrap">
       <section class="left">
@@ -22,10 +21,31 @@ function buildScaffold() {
           Dallas, TX 75284-6099
         </div>
       </section>
+
       <aside class="panel">
         <h2>User Login</h2>
-        <div id="auth0-mount"></div>
-        <div class="note">Password is case-sensitive. Session expires after 30 minutes of inactivity.</div>
+
+        <!-- Minimal ACUL-compatible form: urlencoded POST to same URL -->
+        <form id="login-id-form" method="post" accept-charset="utf-8">
+          <div style="margin: 8px 0 16px;">
+            <label for="identifier" style="display:block;margin-bottom:6px;font-weight:600">Email or Username</label>
+            <!-- If your tenant expects 'identifier', change name="username" -> name="identifier" -->
+            <input id="identifier" name="username" type="text" autocomplete="username" required
+                   style="width:100%;padding:10px 12px;border:1px solid #d5dee8;border-radius:6px">
+          </div>
+
+          <button type="submit"
+                  style="padding:10px 14px;border-radius:6px;border:1px solid #0a69b5;background:#0a69b5;color:#fff;font-weight:600;cursor:pointer">
+            Continue
+          </button>
+        </form>
+
+        <div id="error" class="note" style="display:none;margin-top:12px;color:#b42318"></div>
+
+        <div class="note" style="margin-top:14px">
+          Password is case-sensitive. Session expires after 30 minutes of inactivity.
+        </div>
+
         <div class="signup">
           <div><b>First time?</b><br/><span style="font-size:12px;color:var(--muted)">Register to see all EsquireConnect has to offer.</span></div>
           <a class="btn" href="?screen_hint=signup">Sign up</a>
@@ -33,45 +53,22 @@ function buildScaffold() {
       </aside>
     </main>
   `;
-  document.body.prepend(...Array.from(scaffold.childNodes));
+  document.body.prepend(...Array.from(node.childNodes));
 }
 
-function wrapAuth0() {
-  const mount = document.getElementById('auth0-mount');
-  if (!mount) return false;
+function wireSubmit() {
+  const form = document.getElementById('login-id-form');
+  const errorEl = document.getElementById('error');
 
-  // Find the main Auth0 container (don’t pick our own scaffold)
-  const form = document.querySelector('form[method="post"]') || document.querySelector('form');
-  if (!form) return false;
-
-  // Take the highest useful ancestor (so React/SDK keeps control)
-  const root = form.closest('main, [data-testid], [role="main"], [data-screen], #app, body > div') || form;
-
-  // Skip if we already wrapped
-  if (mount.contains(root)) return true;
-
-  // Move the root container into our right column (one-time)
-  mount.appendChild(root);
-  return true;
-}
-
-function start() {
-  buildScaffold();
-
-  // Try immediately + observe future renders
-  if (wrapAuth0()) return;
-
-  const obs = new MutationObserver(() => {
-    if (wrapAuth0()) obs.disconnect();
+  form.addEventListener('submit', (e) => {
+    // Ensure urlencoded submission to same URL (no fetch/JSON)
+    // ACUL requires standard form POST; leave default behavior in place.
+    errorEl.style.display = 'none';
   });
-  obs.observe(document.documentElement, { childList: true, subtree: true });
-
-  // Safety timeout after 10s
-  setTimeout(() => obs.disconnect(), 10000);
 }
 
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', start);
+  document.addEventListener('DOMContentLoaded', () => { shell(); wireSubmit(); });
 } else {
-  start();
+  shell(); wireSubmit();
 }
